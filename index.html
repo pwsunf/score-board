@@ -14,7 +14,7 @@
 </head>
 
 <body class="bg-slate-100 text-slate-800">
-<div id="app" class="p-3 max-w-full"></div>
+<div id="app" class="max-w-full"></div>
 
 <script>
   const { createApp, ref, watch, onMounted } = Vue
@@ -22,7 +22,7 @@
   createApp({
     setup () {
       const DEFAULT_PLAYERS = ['김','이','원','안','박','허']
-      const STORAGE_KEY = 'score-board-v4'
+      const STORAGE_KEY = 'score-board-mobile-v1'
 
       const players = ref([...DEFAULT_PLAYERS])
       const gameStarted = ref(false)
@@ -41,7 +41,7 @@
           const parsed = JSON.parse(saved)
           players.value = parsed.players
           rounds.value = parsed.rounds
-          gameStarted.value = parsed.gameStarted ?? false
+          gameStarted.value = parsed.gameStarted
         }
       })
 
@@ -57,7 +57,8 @@
         )
       }, { deep: true })
 
-      // 설정 단계 로직
+      /* ---------- setup phase ---------- */
+
       const addPlayer = () => {
         players.value.push('새플레이어')
       }
@@ -68,21 +69,23 @@
           return
         }
 
+        const ok = confirm(
+            `"${players.value[idx]}" 플레이어를 삭제할까요?`
+        )
+        if (!ok) return
+
         players.value.splice(idx, 1)
       }
 
       const startGame = () => {
-        if (players.value.length === 0) {
-          alert('플레이어를 추가해주세요.')
-          return
-        }
-
+        if (players.value.length === 0) return
         rounds.value = createEmptyRounds()
         gameStarted.value = true
         window.scrollTo({ top: 0 })
       }
 
-      // 게임 중 로직
+      /* ---------- game phase ---------- */
+
       const update = (r, p, delta) => {
         rounds.value[r][p] += delta
       }
@@ -122,13 +125,16 @@
 
     template: `
       <div>
-        <h1 class="text-center font-bold text-lg mb-3">
-          score-board
-        </h1>
+        <!-- header -->
+        <div class="sticky top-0 bg-white border-b z-20">
+          <h1 class="text-center font-bold text-lg py-2">
+            score-board
+          </h1>
+        </div>
 
-        <!-- 설정 화면 -->
-        <div v-if="!gameStarted">
-          <div class="bg-white border border-slate-200 rounded-lg p-3 mb-4">
+        <!-- setup screen -->
+        <div v-if="!gameStarted" class="p-3">
+          <div class="bg-white border rounded-lg p-3">
             <div class="text-sm font-semibold mb-2">플레이어 설정</div>
 
             <div class="flex flex-wrap gap-2 mb-3">
@@ -138,22 +144,19 @@
               >
                 <input
                     v-model="players[idx]"
-                    class="w-24 px-2 py-1 border border-slate-300
-                     rounded-md text-center text-sm"
+                    class="w-24 px-2 py-2 border rounded-md text-center text-sm"
                 />
                 <button
                     @click="removePlayer(idx)"
-                    class="text-rose-500 text-sm px-1"
-                >
-                  ✕
-                </button>
+                    class="text-rose-500 text-lg px-2"
+                >✕</button>
               </div>
             </div>
 
-            <div class="flex justify-between">
+            <div class="flex justify-between items-center">
               <button
                   @click="addPlayer"
-                  class="text-sm text-blue-600 underline"
+                  class="text-blue-600 underline text-sm"
               >
                 + 플레이어 추가
               </button>
@@ -162,7 +165,7 @@
                   @click="startGame"
                   class="px-4 py-2 rounded-md
                    bg-emerald-600 text-white
-                   font-medium active:scale-95"
+                   font-medium"
               >
                 게임 시작
               </button>
@@ -170,93 +173,101 @@
           </div>
         </div>
 
-        <!-- 게임 화면 -->
+        <!-- game screen -->
         <div v-else>
-          <div class="flex justify-center mb-4">
+          <!-- control -->
+          <div class="p-3 flex justify-center">
             <button
                 @click="resetAll"
                 class="px-4 py-2 rounded-md
                  border border-rose-300
-                 text-rose-600
-                 bg-white
-                 font-medium active:scale-95"
+                 text-rose-600 bg-white"
             >
               전체 초기화
             </button>
           </div>
 
+          <!-- table -->
           <div class="overflow-x-auto">
-            <table class="min-w-max w-full border-separate border-spacing-y-2">
+            <table class="min-w-max border-separate border-spacing-y-2 px-2">
               <thead>
-              <tr class="text-sm text-slate-500">
-                <th class="px-2 py-1 text-center">판</th>
+              <tr class="text-xs text-slate-500">
+                <th class="sticky left-0 bg-slate-100 z-10 px-2">판</th>
                 <th
                     v-for="p in players"
-                    class="px-2 py-1 text-center"
+                    class="px-2 text-center"
                 >
                   {{ p }}
                 </th>
-                <th class="px-2 py-1 text-center">합</th>
+                <th class="sticky right-0 bg-slate-100 z-10 px-2">합</th>
               </tr>
               </thead>
 
               <tbody>
               <tr
                   v-for="(round, rIdx) in rounds"
-                  class="bg-white border border-slate-200 rounded-lg"
+                  class="bg-white border rounded-lg"
               >
-                <td class="px-2 py-2 text-center text-sm text-slate-500">
+                <!-- round -->
+                <td class="sticky left-0 bg-white z-10 px-2 text-center font-bold">
                   {{ rIdx + 1 }}
                 </td>
 
+                <!-- scores -->
                 <td
                     v-for="(_, pIdx) in players"
-                    class="px-1 py-2"
+                    class="px-2 py-2"
                 >
-                  <div class="flex items-center justify-center gap-1">
-                    <button
-                        class="px-3 py-1 text-rose-600 text-lg active:scale-95"
-                        @click="update(rIdx, pIdx, -1)"
-                    >−</button>
-
+                  <div class="flex flex-col items-center gap-1">
                     <input
                         type="number"
                         inputmode="numeric"
-                        class="w-14 h-9 text-center
-                           border border-slate-300
-                           rounded-md text-base"
+                        class="w-16 h-10 text-center
+                           border rounded-md text-base"
                         v-model.number="rounds[rIdx][pIdx]"
                     />
 
-                    <button
-                        class="px-3 py-1 text-emerald-600 text-lg active:scale-95"
-                        @click="update(rIdx, pIdx, 1)"
-                    >+</button>
+                    <div class="flex gap-2">
+                      <button
+                          class="w-10 h-10 rounded-full
+                             bg-rose-100 text-rose-600 text-lg"
+                          @click="update(rIdx, pIdx, -1)"
+                      >−</button>
+
+                      <button
+                          class="w-10 h-10 rounded-full
+                             bg-emerald-100 text-emerald-600 text-lg"
+                          @click="update(rIdx, pIdx, 1)"
+                      >+</button>
+                    </div>
                   </div>
                 </td>
 
+                <!-- sum -->
                 <td
-                    class="px-2 py-2 text-center font-semibold rounded-md"
+                    class="sticky right-0 z-10 px-2 text-center font-bold"
                     :class="roundSum(round) === 0
-                  ? 'text-emerald-600 bg-emerald-50'
-                  : 'text-rose-600 bg-rose-50'"
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'bg-rose-50 text-rose-600'"
                 >
                   {{ roundSum(round) }}
                 </td>
               </tr>
-
-              <tr class="bg-slate-200 font-bold">
-                <td class="px-2 py-2 text-center">합</td>
-                <td
-                    v-for="(_, idx) in players"
-                    class="px-2 py-2 text-center"
-                >
-                  {{ playerTotal(idx) }}
-                </td>
-                <td class="px-2 py-2 text-center">0</td>
-              </tr>
               </tbody>
             </table>
+          </div>
+
+          <!-- total footer -->
+          <div class="sticky bottom-0 bg-white border-t p-2 z-20">
+            <div class="flex justify-around text-sm font-bold">
+              <div
+                  v-for="(p, idx) in players"
+                  class="text-center"
+              >
+                <div class="text-slate-500">{{ p }}</div>
+                <div>{{ playerTotal(idx) }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
