@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <title>score-board</title>
+</head>
+
+<body class="bg-slate-100 text-slate-800">
+<div id="app" class="p-3 max-w-full"></div>
+
+<script>
+  const { createApp, ref, watch, onMounted } = Vue
+
+  createApp({
+    setup () {
+      const DEFAULT_PLAYERS = ['김','이','원','안','박','허']
+      const STORAGE_KEY = 'score-board-v4'
+
+      const players = ref([...DEFAULT_PLAYERS])
+      const gameStarted = ref(false)
+
+      const createEmptyRounds = () =>
+          Array.from({ length: 15 }, () =>
+              Array(players.value.length).fill(0)
+          )
+
+      const rounds = ref(createEmptyRounds())
+
+      // load
+      onMounted(() => {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          players.value = parsed.players
+          rounds.value = parsed.rounds
+          gameStarted.value = parsed.gameStarted ?? false
+        }
+      })
+
+      // auto save
+      watch([players, rounds, gameStarted], () => {
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+              players: players.value,
+              rounds: rounds.value,
+              gameStarted: gameStarted.value
+            })
+        )
+      }, { deep: true })
+
+      // 설정 단계 로직
+      const addPlayer = () => {
+        players.value.push('새플레이어')
+      }
+
+      const removePlayer = (idx) => {
+        if (players.value.length <= 1) {
+          alert('플레이어는 최소 1명 이상이어야 합니다.')
+          return
+        }
+
+        players.value.splice(idx, 1)
+      }
+
+      const startGame = () => {
+        if (players.value.length === 0) {
+          alert('플레이어를 추가해주세요.')
+          return
+        }
+
+        rounds.value = createEmptyRounds()
+        gameStarted.value = true
+        window.scrollTo({ top: 0 })
+      }
+
+      // 게임 중 로직
+      const update = (r, p, delta) => {
+        rounds.value[r][p] += delta
+      }
+
+      const roundSum = (round) =>
+          round.reduce((a, b) => a + b, 0)
+
+      const playerTotal = (idx) =>
+          rounds.value.reduce((s, r) => s + r[idx], 0)
+
+      const resetAll = () => {
+        const ok = confirm(
+            '게임을 종료하고 처음으로 돌아갈까요?\n(점수는 삭제됩니다)'
+        )
+        if (!ok) return
+
+        players.value = [...DEFAULT_PLAYERS]
+        rounds.value = createEmptyRounds()
+        gameStarted.value = false
+        localStorage.removeItem(STORAGE_KEY)
+        window.scrollTo({ top: 0 })
+      }
+
+      return {
+        players,
+        rounds,
+        gameStarted,
+        addPlayer,
+        removePlayer,
+        startGame,
+        update,
+        roundSum,
+        playerTotal,
+        resetAll
+      }
+    },
+
+    template: `
+      <div>
+        <h1 class="text-center font-bold text-lg mb-3">
+          score-board
+        </h1>
+
+        <!-- 설정 화면 -->
+        <div v-if="!gameStarted">
+          <div class="bg-white border border-slate-200 rounded-lg p-3 mb-4">
+            <div class="text-sm font-semibold mb-2">플레이어 설정</div>
+
+            <div class="flex flex-wrap gap-2 mb-3">
+              <div
+                  v-for="(p, idx) in players"
+                  class="flex items-center gap-1"
+              >
+                <input
+                    v-model="players[idx]"
+                    class="w-24 px-2 py-1 border border-slate-300
+                     rounded-md text-center text-sm"
+                />
+                <button
+                    @click="removePlayer(idx)"
+                    class="text-rose-500 text-sm px-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div class="flex justify-between">
+              <button
+                  @click="addPlayer"
+                  class="text-sm text-blue-600 underline"
+              >
+                + 플레이어 추가
+              </button>
+
+              <button
+                  @click="startGame"
+                  class="px-4 py-2 rounded-md
+                   bg-emerald-600 text-white
+                   font-medium active:scale-95"
+              >
+                게임 시작
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 게임 화면 -->
+        <div v-else>
+          <div class="flex justify-center mb-4">
+            <button
+                @click="resetAll"
+                class="px-4 py-2 rounded-md
+                 border border-rose-300
+                 text-rose-600
+                 bg-white
+                 font-medium active:scale-95"
+            >
+              전체 초기화
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-max w-full border-separate border-spacing-y-2">
+              <thead>
+              <tr class="text-sm text-slate-500">
+                <th class="px-2 py-1 text-center">판</th>
+                <th
+                    v-for="p in players"
+                    class="px-2 py-1 text-center"
+                >
+                  {{ p }}
+                </th>
+                <th class="px-2 py-1 text-center">합</th>
+              </tr>
+              </thead>
+
+              <tbody>
+              <tr
+                  v-for="(round, rIdx) in rounds"
+                  class="bg-white border border-slate-200 rounded-lg"
+              >
+                <td class="px-2 py-2 text-center text-sm text-slate-500">
+                  {{ rIdx + 1 }}
+                </td>
+
+                <td
+                    v-for="(_, pIdx) in players"
+                    class="px-1 py-2"
+                >
+                  <div class="flex items-center justify-center gap-1">
+                    <button
+                        class="px-3 py-1 text-rose-600 text-lg active:scale-95"
+                        @click="update(rIdx, pIdx, -1)"
+                    >−</button>
+
+                    <input
+                        type="number"
+                        inputmode="numeric"
+                        class="w-14 h-9 text-center
+                           border border-slate-300
+                           rounded-md text-base"
+                        v-model.number="rounds[rIdx][pIdx]"
+                    />
+
+                    <button
+                        class="px-3 py-1 text-emerald-600 text-lg active:scale-95"
+                        @click="update(rIdx, pIdx, 1)"
+                    >+</button>
+                  </div>
+                </td>
+
+                <td
+                    class="px-2 py-2 text-center font-semibold rounded-md"
+                    :class="roundSum(round) === 0
+                  ? 'text-emerald-600 bg-emerald-50'
+                  : 'text-rose-600 bg-rose-50'"
+                >
+                  {{ roundSum(round) }}
+                </td>
+              </tr>
+
+              <tr class="bg-slate-200 font-bold">
+                <td class="px-2 py-2 text-center">합</td>
+                <td
+                    v-for="(_, idx) in players"
+                    class="px-2 py-2 text-center"
+                >
+                  {{ playerTotal(idx) }}
+                </td>
+                <td class="px-2 py-2 text-center">0</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `
+  }).mount('#app')
+</script>
+</body>
+</html>
