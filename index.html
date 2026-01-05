@@ -2,21 +2,15 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta
-      name="viewport"
-      content="width=device-width,
-             initial-scale=1,
-             maximum-scale=1,
-             user-scalable=no"
-  />
+  <meta name="viewport"
+        content="width=device-width,
+                 initial-scale=1,
+                 maximum-scale=1,
+                 user-scalable=no" />
 
-  <!-- favicon -->
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
 
-  <!-- Vue 3 -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <title>점수판</title>
@@ -34,13 +28,11 @@
 
   createApp({
     setup () {
-      /* ================= CONFIG ================= */
       const DEFAULT_PLAYERS = ['김','이','원','안','박','허']
       const GAME_KEY = 'score-board-v2'
       const HISTORY_KEY = 'score-board-history-v2'
 
-      /* ================= STATE ================= */
-      const tab = ref('game')            // game | history
+      const tab = ref('game')
       const gameStarted = ref(false)
       const players = ref([...DEFAULT_PLAYERS])
       const rounds = ref([])
@@ -52,7 +44,6 @@
               players.value.map(() => 0)
           )
 
-      /* ================= LOAD ================= */
       onMounted(() => {
         const g = localStorage.getItem(GAME_KEY)
         if (g) {
@@ -66,7 +57,6 @@
         if (h) history.value = JSON.parse(h)
       })
 
-      /* ================= SAVE ================= */
       watch([players, rounds, gameStarted], () => {
         localStorage.setItem(GAME_KEY, JSON.stringify({
           players: players.value,
@@ -79,7 +69,6 @@
         localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value))
       }, { deep: true })
 
-      /* ================= PLAYER ================= */
       const addPlayer = () => players.value.push('새플레이어')
 
       const removePlayer = (idx) => {
@@ -88,34 +77,26 @@
         players.value.splice(idx, 1)
       }
 
-      /* ================= GAME ================= */
       const startGame = () => {
         rounds.value = createEmptyRounds()
         gameStarted.value = true
         tab.value = 'game'
       }
 
-      const update = (r, p, d) => {
-        rounds.value[r][p] += d
-      }
-
       const roundSum = (round) =>
-          round.reduce((a, b) => a + b, 0)
+          round.reduce((a, b) => a + (Number(b) || 0), 0)
 
       const playerTotal = (idx) =>
-          rounds.value.reduce((s, r) => s + r[idx], 0)
+          rounds.value.reduce((s, r) => s + (Number(r[idx]) || 0), 0)
 
-      // 점수판 초기화 → 설정 화면 복귀
       const resetCurrentBoard = () => {
         if (!confirm(
             '점수판을 초기화하고\n플레이어 설정으로 돌아갈까요?\n(기록은 남지 않습니다)'
         )) return
-
         rounds.value = []
         gameStarted.value = false
       }
 
-      // 게임 종료 → 기록 저장
       const endGame = () => {
         if (!confirm('이 게임을 종료하고 결과를 저장할까요?')) return
 
@@ -131,7 +112,6 @@
         gameStarted.value = false
       }
 
-      /* ================= AGGREGATE ================= */
       const aggregateTotals = computed(() => {
         const result = {}
         history.value.forEach(g => {
@@ -142,7 +122,6 @@
         return result
       })
 
-      // ⭐ 모든 기록 초기화 (localStorage 전체 정리)
       const clearHistory = () => {
         if (!confirm(
             '모든 기록을 초기화할까요?\n(현재 점수판과 합산 기록이 모두 삭제됩니다)'
@@ -157,8 +136,6 @@
 
         localStorage.removeItem(GAME_KEY)
         localStorage.removeItem(HISTORY_KEY)
-
-        window.scrollTo({ top: 0 })
       }
 
       return {
@@ -172,7 +149,6 @@
         addPlayer,
         removePlayer,
         startGame,
-        update,
         roundSum,
         playerTotal,
         resetCurrentBoard,
@@ -182,167 +158,126 @@
     },
 
     template: `
-      <div>
-        <!-- HEADER -->
-        <div class="sticky top-0 bg-white border-b shadow-sm z-20">
-          <div class="flex justify-around text-xl font-bold py-4">
-            <button @click="tab='game'"
-                    :class="tab==='game' && 'text-emerald-600'">점수판</button>
-            <button @click="tab='history'"
-                    :class="tab==='history' && 'text-emerald-600'">합산</button>
+  <div>
+    <div class="sticky top-0 bg-white border-b shadow-sm z-20">
+      <div class="flex justify-around text-xl font-bold py-4">
+        <button @click="tab='game'" :class="tab==='game' && 'text-emerald-600'">점수판</button>
+        <button @click="tab='history'" :class="tab==='history' && 'text-emerald-600'">합산</button>
+      </div>
+    </div>
+
+    <div v-if="tab==='game'" class="p-4 space-y-5 pb-40">
+
+      <div v-if="!gameStarted" class="bg-white rounded-xl p-5">
+        <div class="text-2xl font-bold mb-4">플레이어 설정</div>
+
+        <div class="flex flex-wrap gap-4 mb-4">
+          <div v-for="(p,i) in players" class="flex items-center gap-2">
+            <input v-model="players[i]" class="w-28 h-12 text-xl border rounded text-center"/>
+            <button @click="removePlayer(i)" class="text-rose-600 text-2xl">✕</button>
           </div>
         </div>
 
-        <!-- ================= GAME TAB ================= -->
-        <div v-if="tab==='game'" class="p-4 space-y-5 pb-40">
+        <div class="flex justify-between">
+          <button @click="addPlayer" class="text-lg text-blue-600 underline">+ 플레이어 추가</button>
+          <button @click="startGame" class="px-6 py-3 bg-emerald-600 text-white rounded-xl text-xl">게임 시작</button>
+        </div>
+      </div>
 
-          <!-- PLAYER SETUP -->
-          <div v-if="!gameStarted" class="bg-white rounded-xl p-5">
-            <div class="text-2xl font-bold mb-4">플레이어 설정</div>
+      <div v-if="gameStarted">
+        <div v-for="(round,rIdx) in rounds"
+             class="rounded-xl p-5 mb-4 border"
+             :class="roundSum(round) !== 0 ? 'border-rose-400 bg-rose-50' : 'border-slate-200 bg-white'">
 
-            <div class="flex flex-wrap gap-4 mb-4">
-              <div v-for="(p,i) in players" class="flex items-center gap-2">
-                <input v-model="players[i]"
-                       class="w-28 h-12 text-xl border rounded text-center"/>
-                <button @click="removePlayer(i)"
-                        class="text-rose-600 text-2xl">✕</button>
-              </div>
-            </div>
+          <div class="font-bold text-2xl mb-3">{{ rIdx+1 }}판</div>
 
-            <div class="flex justify-between">
-              <button @click="addPlayer"
-                      class="text-lg text-blue-600 underline">+ 플레이어 추가</button>
-              <button @click="startGame"
-                      class="px-6 py-3 bg-emerald-600 text-white rounded-xl text-xl">
-                게임 시작
-              </button>
+          <div class="grid grid-cols-2 gap-4">
+            <div v-for="(p,pIdx) in players" class="border rounded-xl p-4 text-center bg-white">
+              <div class="font-bold text-xl">{{ p }}</div>
+              <input
+                v-model="rounds[rIdx][pIdx]"
+                type="number"
+                inputmode="numeric"
+                pattern="[0-9\\-]*"
+                class="w-full h-16 text-3xl font-bold text-center border rounded-xl my-3"
+              />
             </div>
           </div>
 
-          <!-- GAME PROGRESS -->
-          <div v-if="gameStarted">
-            <div v-for="(round,rIdx) in rounds"
-                 class="rounded-xl p-5 mb-4 border"
-                 :class="roundSum(round) !== 0
-               ? 'border-rose-400 bg-rose-50'
-               : 'border-slate-200 bg-white'">
-
-              <div class="font-bold text-2xl mb-3">
-                {{ rIdx+1 }}판
-              </div>
-
-              <div class="grid grid-cols-2 gap-4">
-                <div v-for="(p,pIdx) in players"
-                     class="border rounded-xl p-4 text-center bg-white">
-                  <div class="font-bold text-xl">{{ p }}</div>
-                  <div class="text-3xl font-bold my-3">
-                    {{ rounds[rIdx][pIdx] }}
-                  </div>
-                  <div class="flex justify-center gap-4">
-                    <button @click="update(rIdx,pIdx,-1)"
-                            class="w-14 h-14 bg-rose-100 text-rose-700
-                               rounded-full text-3xl">−</button>
-                    <button @click="update(rIdx,pIdx,1)"
-                            class="w-14 h-14 bg-emerald-100 text-emerald-700
-                               rounded-full text-3xl">+</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-3 text-center font-bold text-2xl"
-                   :class="roundSum(round) === 0
-                 ? 'text-emerald-700'
-                 : 'text-rose-700'">
-                {{ rIdx+1 }}판 합계: {{ roundSum(round) }}
-              </div>
-            </div>
-
-            <!-- ACTION BUTTONS -->
-            <div class="flex justify-between items-center mt-6">
-              <button @click="resetCurrentBoard"
-                      class="px-6 py-3
-                         border border-slate-400
-                         text-slate-700
-                         rounded-xl text-lg">
-                점수판 초기화
-              </button>
-
-              <button @click="endGame"
-                      class="px-8 py-4
-                         bg-blue-600 text-white
-                         text-xl rounded-xl">
-                게임 종료
-              </button>
-            </div>
+          <div class="mt-3 text-center font-bold text-2xl"
+               :class="roundSum(round) === 0 ? 'text-emerald-700' : 'text-rose-700'">
+            {{ rIdx+1 }}판 합계: {{ roundSum(round) }}
           </div>
         </div>
 
-        <!-- CURRENT TOTAL FOOTER -->
-        <div v-if="tab==='game' && gameStarted"
-             class="sticky bottom-0 bg-slate-50 border-t p-4 shadow-inner">
-          <div class="flex justify-around text-center font-bold">
-            <div v-for="(p,i) in players">
-              <div class="text-lg text-slate-600">{{ p }}</div>
-              <div class="text-3xl">{{ playerTotal(i) }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ================= HISTORY TAB ================= -->
-        <div v-if="tab==='history'" class="p-4 space-y-5">
-          <div class="bg-white rounded-xl p-5">
-            <div class="text-2xl font-bold mb-4">누적 합산</div>
-            <div v-for="(v,k) in aggregateTotals"
-                 class="flex justify-between text-2xl font-bold">
-              <span>{{ k }}</span>
-              <span>{{ v }}</span>
-            </div>
-          </div>
-
-          <button @click="clearHistory"
-                  class="mx-auto block px-6 py-3
-                     border border-rose-400 text-rose-600
-                     rounded-xl bg-white text-lg">
-            모든 기록 초기화
+        <div class="flex justify-between items-center mt-6">
+          <button @click="resetCurrentBoard"
+                  class="px-6 py-3 border border-slate-400 text-slate-700 rounded-xl text-lg">
+            점수판 초기화
           </button>
+          <button @click="endGame"
+                  class="px-8 py-4 bg-blue-600 text-white text-xl rounded-xl">
+            게임 종료
+          </button>
+        </div>
+      </div>
+    </div>
 
-          <div v-for="g in history"
-               class="bg-white rounded-xl p-5">
-            <div class="font-bold text-xl mb-3 flex justify-between">
-              <span>{{ g.id }}</span>
-              <button
-                  @click="openedGameId = openedGameId === g.id ? null : g.id"
+    <div v-if="tab==='game' && gameStarted"
+         class="sticky bottom-0 bg-slate-50 border-t p-4 shadow-inner">
+      <div class="flex justify-around text-center font-bold">
+        <div v-for="(p,i) in players">
+          <div class="text-lg text-slate-600">{{ p }}</div>
+          <div class="text-3xl">{{ playerTotal(i) }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="tab==='history'" class="p-4 space-y-5">
+      <div class="bg-white rounded-xl p-5">
+        <div class="text-2xl font-bold mb-4">누적 합산</div>
+        <div v-for="(v,k) in aggregateTotals"
+             class="flex justify-between text-2xl font-bold">
+          <span>{{ k }}</span>
+          <span>{{ v }}</span>
+        </div>
+      </div>
+
+      <button @click="clearHistory"
+              class="mx-auto block px-6 py-3 border border-rose-400 text-rose-600 rounded-xl bg-white text-lg">
+        모든 기록 초기화
+      </button>
+
+      <div v-for="g in history" class="bg-white rounded-xl p-5">
+        <div class="font-bold text-xl mb-3 flex justify-between">
+          <span>{{ g.id }}</span>
+          <button @click="openedGameId = openedGameId === g.id ? null : g.id"
                   class="text-blue-600 underline text-lg">
-                {{ openedGameId === g.id ? '접기' : '상세 보기' }}
-              </button>
-            </div>
+            {{ openedGameId === g.id ? '접기' : '상세 보기' }}
+          </button>
+        </div>
 
-            <div v-for="(p,i) in g.players"
-                 class="flex justify-between text-xl">
+        <div v-for="(p,i) in g.players" class="flex justify-between text-xl">
+          <span>{{ p }}</span>
+          <span>{{ g.totals[i] }}</span>
+        </div>
+
+        <div v-if="openedGameId === g.id" class="mt-4 space-y-3">
+          <div v-for="(round,rIdx) in g.rounds" class="border rounded-lg p-3">
+            <div class="font-bold text-lg mb-2">{{ rIdx+1 }}판</div>
+            <div v-for="(p,i) in g.players" class="flex justify-between text-lg">
               <span>{{ p }}</span>
-              <span>{{ g.totals[i] }}</span>
+              <span>{{ round[i] }}</span>
             </div>
-
-            <div v-if="openedGameId === g.id" class="mt-4 space-y-3">
-              <div v-for="(round,rIdx) in g.rounds"
-                   class="border rounded-lg p-3">
-                <div class="font-bold text-lg mb-2">
-                  {{ rIdx+1 }}판
-                </div>
-                <div v-for="(p,i) in g.players"
-                     class="flex justify-between text-lg">
-                  <span>{{ p }}</span>
-                  <span>{{ round[i] }}</span>
-                </div>
-                <div class="text-right font-bold text-lg mt-2">
-                  합계: {{ round.reduce((a,b)=>a+b,0) }}
-                </div>
-              </div>
+            <div class="text-right font-bold text-lg mt-2">
+              합계: {{ round.reduce((a,b)=>a+b,0) }}
             </div>
           </div>
         </div>
       </div>
-    `
+    </div>
+  </div>
+  `
   }).mount('#app')
 </script>
 </body>
