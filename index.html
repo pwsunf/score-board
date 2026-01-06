@@ -270,7 +270,7 @@
               <span>{{ round[i] }}</span>
             </div>
             <div class="text-right font-bold text-lg mt-2">
-              합계: {{ round.reduce((a,b)=>a+b,0) }}
+              합계: {{ round.reduce((a,b)=>a + (Number(b) || 0), 0) }}
             </div>
           </div>
         </div>
