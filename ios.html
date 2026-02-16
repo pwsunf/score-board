@@ -44,6 +44,14 @@
               players.value.map(() => 0)
           )
 
+      const saveGame = () => {
+        localStorage.setItem(GAME_KEY, JSON.stringify({
+          players: players.value,
+          rounds: rounds.value,
+          gameStarted: gameStarted.value
+        }))
+      }
+
       onMounted(() => {
         const g = localStorage.getItem(GAME_KEY)
         if (g) {
@@ -56,14 +64,6 @@
         const h = localStorage.getItem(HISTORY_KEY)
         if (h) history.value = JSON.parse(h)
       })
-
-      watch([players, rounds, gameStarted], () => {
-        localStorage.setItem(GAME_KEY, JSON.stringify({
-          players: players.value,
-          rounds: rounds.value,
-          gameStarted: gameStarted.value
-        }))
-      }, { deep: true })
 
       watch(history, () => {
         localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value))
@@ -81,12 +81,14 @@
         rounds.value = createEmptyRounds()
         gameStarted.value = true
         tab.value = 'game'
+        saveGame()
       }
 
       const addRound = () => {
         rounds.value.push(
             players.value.map(() => 0)
         )
+        saveGame()
       }
 
       const roundSum = (round) =>
@@ -99,8 +101,11 @@
         if (!confirm(
             '점수판을 초기화하고\n플레이어 설정으로 돌아갈까요?\n(기록은 남지 않습니다)'
         )) return
+
         rounds.value = []
         gameStarted.value = false
+
+        localStorage.removeItem(GAME_KEY)
       }
 
       const endGame = () => {
@@ -116,6 +121,8 @@
 
         rounds.value = []
         gameStarted.value = false
+
+        localStorage.removeItem(GAME_KEY)
       }
 
       const aggregateTotals = computed(() => {
@@ -160,7 +167,8 @@
         playerTotal,
         resetCurrentBoard,
         endGame,
-        clearHistory
+        clearHistory,
+        saveGame
       }
     },
 
@@ -203,6 +211,7 @@
               <div class="font-bold text-xl">{{ p }}</div>
               <input
                 v-model="rounds[rIdx][pIdx]"
+                @input="saveGame()"
                 type="text"
                 class="w-full h-16 text-3xl font-bold text-center border rounded-xl my-3"
               />
